@@ -65,12 +65,12 @@ var p5 = function(sketch, node, sync) {
    * var img;
    * var c;
    * function preload() {
-  // preload() runs once
+   *   // preload() runs once
    *   img = loadImage('assets/laDefense.jpg');
    * }
    *
    * function setup() {
-  // setup() waits until preload() is done
+   *   // setup() waits until preload() is done
    *   img.loadPixels();
    *   // get color of middle pixel
    *   c = img.get(img.width / 2, img.height / 2);
@@ -150,11 +150,11 @@ var p5 = function(sketch, node, sync) {
    * <div><code>
    * var yPos = 0;
    * function setup() {
-  // setup() runs once
+   *   // setup() runs once
    *   frameRate(30);
    * }
    * function draw() {
-  // draw() loops forever, until stopped
+   *   // draw() loops forever, until stopped
    *   background(204);
    *   yPos = yPos - 1;
    *   if (yPos < 0) {
@@ -319,8 +319,7 @@ var p5 = function(sketch, node, sync) {
     // will be replaced
     this.createCanvas(
       this._defaultCanvasSize.width,
-      this._defaultCanvasSize.height,
-      'p2d'
+      this._defaultCanvasSize.height
     );
 
     // return preload functions to their normal vals if switched by preload
@@ -341,14 +340,17 @@ var p5 = function(sketch, node, sync) {
     }
 
     // unhide any hidden canvases that were created
-    var canvases = document.getElementsByTagName('canvas');
-    for (var i = 0; i < canvases.length; i++) {
-      var k = canvases[i];
-      if (k.dataset.hidden === 'true') {
-        k.style.visibility = '';
-        delete k.dataset.hidden;
+    for (var i = 0; i < this._elements.length; i++) {
+      var element = this._elements[i];
+      if (element instanceof p5.Renderer) {
+        var k = element.elt;
+        if (k.dataset.hidden === 'true') {
+          k.style.visibility = '';
+          delete k.dataset.hidden;
+        }
       }
     }
+
     this._setupDone = true;
   }.bind(this);
 
