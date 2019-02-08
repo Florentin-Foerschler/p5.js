@@ -415,6 +415,7 @@ p5.RendererGL.prototype.background = function() {
   this.GL.clearColor(_r, _g, _b, _a);
   this.GL.depthMask(true);
   this.GL.clear(this.GL.COLOR_BUFFER_BIT | this.GL.DEPTH_BUFFER_BIT);
+  this._ctx._pixelsDirty = true;
 };
 
 //@TODO implement this
@@ -564,14 +565,27 @@ p5.RendererGL.prototype.strokeWeight = function(w) {
 
 // x,y are canvas-relative (pre-scaled by _pixelDensity)
 p5.RendererGL.prototype._getPixel = function(x, y) {
-  var pixels = new Uint8Array(4);
-  // prettier-ignore
-  this.drawingContext.readPixels(
-    x, y, 1, 1,
-    this.drawingContext.RGBA, this.drawingContext.UNSIGNED_BYTE,
-    pixels
-  );
-  return [].slice.call(pixels);
+  var ctx = this._ctx;
+  var imageData, index;
+  if (ctx._pixelsDirty) {
+    imageData = new Uint8Array(4);
+    // prettier-ignore
+    this.drawingContext.readPixels(
+      x, y, 1, 1,
+      this.drawingContext.RGBA, this.drawingContext.UNSIGNED_BYTE,
+      imageData
+    );
+    index = 0;
+  } else {
+    imageData = ctx.pixels;
+    index = (Math.floor(x) + Math.floor(y) * this.canvas.width) * 4;
+  }
+  return [
+    imageData[index + 0],
+    imageData[index + 1],
+    imageData[index + 2],
+    imageData[index + 3]
+  ];
 };
 
 /**
@@ -585,6 +599,10 @@ p5.RendererGL.prototype._getPixel = function(x, y) {
  */
 
 p5.RendererGL.prototype.loadPixels = function() {
+  var ctx = this._ctx;
+  if (!ctx._pixelsDirty) return;
+  ctx._pixelsDirty = false;
+
   //@todo_FES
   if (this.attributes.preserveDrawingBuffer !== true) {
     console.log(
@@ -592,30 +610,23 @@ p5.RendererGL.prototype.loadPixels = function() {
     );
     return;
   }
-  var pd = this._pInst._pixelDensity;
-  var x = 0;
-  var y = 0;
-  var w = this.width;
-  var h = this.height;
-  w *= pd;
-  h *= pd;
+
   //if there isn't a renderer-level temporary pixels buffer
   //make a new one
-  if (typeof this.pixels === 'undefined') {
-    this.pixels = new Uint8Array(
-      this.GL.drawingBufferWidth * this.GL.drawingBufferHeight * 4
-    );
+  var pixels = ctx.pixels;
+  var len = this.GL.drawingBufferWidth * this.GL.drawingBufferHeight * 4;
+  if (!(pixels instanceof Uint8Array) || pixels.length !== len) {
+    pixels = new Uint8Array(len);
+    this._ctx._setProperty('pixels', pixels);
   }
+
+  var pd = this._pInst._pixelDensity;
+  // prettier-ignore
   this.GL.readPixels(
-    x,
-    y,
-    w,
-    h,
-    this.GL.RGBA,
-    this.GL.UNSIGNED_BYTE,
-    this.pixels
+    0, 0, this.width * pd, this.height * pd,
+    this.GL.RGBA, this.GL.UNSIGNED_BYTE,
+    pixels
   );
-  this._ctx._setProperty('pixels', this.pixels);
 };
 
 //////////////////////////////////////////////
@@ -645,9 +656,14 @@ p5.RendererGL.prototype.resize = function(w, h) {
   this._curCamera._resize();
 
   //resize pixels buffer
-  if (typeof this.pixels !== 'undefined') {
-    this.pixels = new Uint8Array(
-      this.GL.drawingBufferWidth * this.GL.drawingBufferHeight * 4
+  var ctx = this._ctx;
+  ctx._pixelsDirty = true;
+  if (typeof ctx.pixels !== 'undefined') {
+    ctx._setProperty(
+      'pixels',
+      new Uint8Array(
+        this.GL.drawingBufferWidth * this.GL.drawingBufferHeight * 4
+      )
     );
   }
 };
@@ -668,6 +684,7 @@ p5.RendererGL.prototype.clear = function() {
   var _a = arguments[3] || 0;
   this.GL.clearColor(_r, _g, _b, _a);
   this.GL.clear(this.GL.COLOR_BUFFER_BIT | this.GL.DEPTH_BUFFER_BIT);
+  this._ctx._pixelsDirty = true;
 };
 
 /**

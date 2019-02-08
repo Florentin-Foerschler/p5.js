@@ -356,6 +356,7 @@ p5.RendererGL.prototype._drawPoints = function(vertices, vertexBuffer) {
   );
 
   gl.drawArrays(gl.Points, 0, vertices.length);
+  this._ctx._pixelsDirty = true;
 };
 
 module.exports = p5.RendererGL;
